@@ -1,0 +1,4 @@
+megai
+=====
+
+Solomonoff induction
