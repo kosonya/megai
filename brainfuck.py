@@ -38,6 +38,8 @@ class BrainFuckMachine(object):
                 pass
             if nesting_level < 0:
                 return False
+        if nesting_level > 0:
+            return False
         return True
     
     def match_braces(self):
@@ -63,6 +65,7 @@ class BrainFuckMachine(object):
         nesting_level = 0
         input_pos = 0
         while iters <= max_iterations:
+            iters += 1
             c = self.machine[cmd_pos]
             if c == ".":
                 if self.output_mode == "ASCII":
@@ -168,10 +171,15 @@ def main():
         print i
         res += i
     print res
-    bf = BrainFuckMachine(machine = ".+.+.[-.].+-------.", output_mode = "int")
+    bf = BrainFuckMachine(machine = "+[-.+.]", output_mode = "int")
     bf.validate()
     bf.match_braces()
-    for i in bf.execute():
+    for i in bf.execute(max_iterations = 10):
+        print i
+    bf = BrainFuckMachine(machine = "<>+[]-.", output_mode = "int")
+    bf.validate()
+    bf.match_braces()
+    for i in bf.execute(max_iterations = 1000):
         print i
 
 
