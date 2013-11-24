@@ -11,19 +11,22 @@ int validate_and_optimize(char *program, int len);
 int main()
 {
 	int *arr_seq;
-	int i, seq_len = 10;
+	int i, seq_len;
 	char *program;
-	arr_seq = (int*)calloc(seq_len, sizeof(int));
-	program = (char*)malloc((seq_len+1)*sizeof(char));
-	do
+	for(seq_len = 1; seq_len <= 6; seq_len++)
 	{
-		arr_seq_to_program(arr_seq, program, seq_len);
-		if (validate_and_optimize(program, seq_len))
+		arr_seq = (int*)calloc(seq_len, sizeof(int));
+		program = (char*)malloc((seq_len+1)*sizeof(char));
+		do
 		{
-			program[seq_len] = '\0';
-			printf("%s\n", program);
-		}
-	} while(next_arr_seq(arr_seq, seq_len, MAXVAL));
+			arr_seq_to_program(arr_seq, program, seq_len);
+			if (validate_and_optimize(program, seq_len))
+			{
+				program[seq_len] = '\0';
+				printf("%s\n", program);
+			}
+		} while(next_arr_seq(arr_seq, seq_len, MAXVAL));
+	}
 	return 0;
 }
 
