@@ -24,7 +24,7 @@ int main()
 	int *arr_seq, *stack, *match_arr, *tape, tape_len, tape_pointer, cmd_pointer, machine_output, *desired_output;
 	int i, seq_len, iters, desired_out_len, j;
 	char *program;
-	int desired_output_st[] = {0, 1, 0, 1, 0, 1, 0, 1, 0};
+	int desired_output_st[] = {1, 2, 3, 4, 5};
 
 	tape_len = MAXITERS*2;
 
@@ -72,7 +72,10 @@ int main()
 							if (j >= desired_out_len)
 							{
 								printf("Success!!!\n");
-								printf("Machine: %s\n", program);
+								printf("Desired output: ");
+								for(j = 0; j < desired_out_len; j++)
+									printf("%d ", desired_output[j]);
+								printf("\nMachine: %s\n", program);
 								goto main_loop_exit;
 							}
 							
