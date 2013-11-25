@@ -24,9 +24,13 @@ int main()
 	int *arr_seq, *stack, *match_arr, *tape, tape_len, tape_pointer, cmd_pointer, machine_output, *desired_output;
 	int i, seq_len, iters, desired_out_len, j;
 	char *program;
-	int desired_output_st[] = {1, 2, 3, 4, 5};
+	//int desired_output_st[] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34};
+	int desired_output_st[] = {3, 6, 9, 12, 15};
+
 
 	tape_len = MAXITERS*2;
+
+	tape = (int*)calloc(tape_len, sizeof(int));
 
 	desired_out_len = sizeof(desired_output_st)/sizeof(int);
 	desired_output = (int*)malloc(desired_out_len*sizeof(int));
@@ -36,7 +40,7 @@ int main()
 		//printf("%d - %d\n", i, desired_output[i]);
 	}
 
-	for(seq_len = 1; seq_len <= 7; seq_len++)
+	for(seq_len = 1; seq_len <= 9; seq_len++)
 	{
 		printf("Testing programs of length = %d\n", seq_len);
 		arr_seq = (int*)calloc(seq_len, sizeof(int));
@@ -51,7 +55,8 @@ int main()
 				program[seq_len] = '\0';
 				match_brackets(program, match_arr, stack, seq_len);
 				//printf("%s\n", program);
-				tape = (int*)calloc(tape_len, sizeof(int));
+				for(j = 0; j < tape_len; j++)
+					tape[j] = 0;
 				tape_pointer = tape_len/2;
 				cmd_pointer = 0;
 				j = 0;
@@ -85,7 +90,7 @@ int main()
 
 				}
 				machine_loop_exit:
-				free(tape);
+				;
 				//printf("\n\n");
 				
 			}
@@ -97,6 +102,7 @@ int main()
 	}
 	main_loop_exit:
 	free(desired_output);
+	free(tape);	
 	return 0;
 }
 
