@@ -40,7 +40,7 @@ int main()
 		//printf("%d - %d\n", i, desired_output[i]);
 	}
 
-	for(seq_len = 1; seq_len <= 9; seq_len++)
+	for(seq_len = 1; seq_len <= 50; seq_len++)
 	{
 		printf("Testing programs of length = %d\n", seq_len);
 		arr_seq = (int*)calloc(seq_len, sizeof(int));
