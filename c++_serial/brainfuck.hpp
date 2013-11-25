@@ -1,0 +1,25 @@
+#ifndef _BRAINFUCK_HPP
+#define _BRAINFUCK_HPP
+
+#include <vector>
+
+class BrainFuckMachine
+{
+	private:
+		const std::vector<int> tape
+		std::vector<int> matching_braces;
+		std::vector<char> program;
+		int cmd_pos, tape_pos, iters;
+		char current_output;
+		bool output_available;
+	public:
+		BrainFuckMachine(const std::vector<char> &program, int max_iterations);
+		~BrainFuckMachine();
+		bool validate();
+		bool optimize();
+		bool match_braces();
+		
+
+}
+
+#endif
