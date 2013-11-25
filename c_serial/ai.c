@@ -12,16 +12,15 @@ int match_brackets(char *program, int *match_arr, int *stack, int len);
 int main()
 {
 	int *arr_seq, *stack, *match_arr;
-	int i, seq_len;
+	int i, j, seq_len;
 	char *program;
 
-	seq_len = 25;
 
 	arr_seq = (int*)calloc(seq_len, sizeof(int));
 	program = (char*)malloc((seq_len+1)*sizeof(char));
 	stack = (int*)calloc(seq_len, sizeof(int));
 	match_arr = (int*)calloc(seq_len, sizeof(int));
-
+/*
 	for(i = 0; i <= 25; i++)
 		//program[i] = ".[.].[.[.].].[.[.].[.].]."[i];
 		program[i] = "........................."[i];
@@ -35,10 +34,10 @@ int main()
 	for(i = 0; i < 25; i++)
 		printf("%3d", match_arr[i]);
 	printf("\n");
+*/
 
 
-
-/*	for(seq_len = 1; seq_len <= 6; seq_len++)
+	for(seq_len = 1; seq_len <= 6; seq_len++)
 	{
 		arr_seq = (int*)calloc(seq_len, sizeof(int));
 		program = (char*)malloc((seq_len+1)*sizeof(char));
@@ -50,13 +49,27 @@ int main()
 			if (validate_and_optimize(program, seq_len))
 			{
 				program[seq_len] = '\0';
-				printf("%s\n", program);
+				if (match_brackets(program, match_arr, stack, seq_len))
+				{
+					printf("\n");
+					for(j = 0; j < seq_len; j++)
+						printf("%3d", j);
+					printf("\n");
+					for(j = 0; j < seq_len; j++)
+						printf("%3c", program[j]);
+					printf("\n");
+					for(j = 0; j < seq_len; j++)
+						printf("%3d", match_arr[j]);
+					printf("\n\n");
+				}
+				else
+					printf("%s\n", program);
 			}
 		} while(next_arr_seq(arr_seq, seq_len, MAXVAL));
 		free(arr_seq);
 		free(program);
 	}
-*/	return 0;
+	return 0;
 }
 
 
