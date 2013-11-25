@@ -19,7 +19,7 @@ int match_brackets(char *program, int *match_arr, int *stack, int len);
 int machine_next_step(char *program, int *tape, int *match_arr, int *cmd_pointer, int *tape_pointer, int *output, int program_len, int tape_len);
 
 
-int main()
+int _main()
 {
 	int *arr_seq, *stack, *match_arr, *tape, tape_len, tape_pointer, cmd_pointer, machine_output;
 	int i, j, seq_len, iters;
@@ -78,13 +78,15 @@ loop_exit:
 }
 
 
-int _main()
+int main()
 {
-	int *arr_seq, *stack, *match_arr;
-	int i, j, seq_len;
+	int *arr_seq, *stack, *match_arr, *tape, tape_len, tape_pointer, cmd_pointer, machine_output;
+	int i, seq_len, iters;
 	char *program;
 
-	for(seq_len = 1; seq_len <= 6; seq_len++)
+	tape_len = MAXITERS*2;
+
+	for(seq_len = 1; seq_len <= 4; seq_len++)
 	{
 		arr_seq = (int*)calloc(seq_len, sizeof(int));
 		program = (char*)malloc((seq_len+1)*sizeof(char));
@@ -98,6 +100,26 @@ int _main()
 				program[seq_len] = '\0';
 				match_brackets(program, match_arr, stack, seq_len);
 				printf("%s\n", program);
+				tape = (int*)calloc(tape_len, sizeof(int));
+				tape_pointer = tape_len/2;
+				cmd_pointer = 0;
+				for(iters = 0; iters <= MAXITERS; iters++)
+				{
+					switch (machine_next_step(program, tape, match_arr, &cmd_pointer, &tape_pointer, &machine_output, seq_len, tape_len))
+					{
+						case 0:
+							goto loop_exit; //fuck
+						case 1:
+							printf("%d ", machine_output);
+						case 2:
+							;
+					}
+
+				}
+				loop_exit:
+				free(tape);
+				printf("\n\n");
+				
 			}
 		} while(next_arr_seq(arr_seq, seq_len, MAXVAL));
 		free(arr_seq);
