@@ -16,7 +16,7 @@ int match_brackets(char *program, int *match_arr, int *stack, int len);
 	1 - has some output;
 	2 - runs, but has no output.
 */
-int machine_next_step(char *program, int *tape, int *match_arr, int *cmd_pointer, int *tape_pointer, int *output, int program_len, int tape_len);
+int machine_next_step(char *program, int *tape, int *match_arr, int *cmd_pointer, int *tape_pointer, int *output, int program_len);
 
 
 int main()
@@ -62,7 +62,7 @@ int main()
 				j = 0;
 				for(iters = 0; iters <= MAXITERS; iters++)
 				{
-					switch (machine_next_step(program, tape, match_arr, &cmd_pointer, &tape_pointer, &machine_output, seq_len, tape_len))
+					switch (machine_next_step(program, tape, match_arr, &cmd_pointer, &tape_pointer, &machine_output, seq_len))
 					{
 						case 0:
 							goto machine_loop_exit; //fuck
@@ -220,7 +220,7 @@ int match_brackets(char *program, int *match_arr, int *stack, int len)
 	1 - has some output;
 	2 - runs, but has no output.
 */
-int machine_next_step(char *program, int *tape, int *match_arr, int *cmd_pointer, int *tape_pointer, int *output, int program_len, int tape_len)
+int machine_next_step(char *program, int *tape, int *match_arr, int *cmd_pointer, int *tape_pointer, int *output, int program_len)
 {
 	switch (program[*cmd_pointer])
 	{
