@@ -80,14 +80,24 @@ loop_exit:
 
 int main()
 {
-	int *arr_seq, *stack, *match_arr, *tape, tape_len, tape_pointer, cmd_pointer, machine_output;
-	int i, seq_len, iters;
+	int *arr_seq, *stack, *match_arr, *tape, tape_len, tape_pointer, cmd_pointer, machine_output, *desired_output;
+	int i, seq_len, iters, desired_out_len, j;
 	char *program;
+	int desired_output_st[] = {0, 1, 0, 1, 0, 1, 0, 1, 0};
 
 	tape_len = MAXITERS*2;
 
-	for(seq_len = 1; seq_len <= 4; seq_len++)
+	desired_out_len = sizeof(desired_output_st)/sizeof(int);
+	desired_output = (int*)malloc(desired_out_len*sizeof(int));
+	for(i = 0; i < desired_out_len; i++)
 	{
+		desired_output[i] = desired_output_st[i];
+		//printf("%d - %d\n", i, desired_output[i]);
+	}
+
+	for(seq_len = 1; seq_len <= 7; seq_len++)
+	{
+		printf("Testing programs of length = %d\n", seq_len);
 		arr_seq = (int*)calloc(seq_len, sizeof(int));
 		program = (char*)malloc((seq_len+1)*sizeof(char));
 		stack = (int*)calloc(seq_len, sizeof(int));
@@ -99,26 +109,40 @@ int main()
 			{
 				program[seq_len] = '\0';
 				match_brackets(program, match_arr, stack, seq_len);
-				printf("%s\n", program);
+				//printf("%s\n", program);
 				tape = (int*)calloc(tape_len, sizeof(int));
 				tape_pointer = tape_len/2;
 				cmd_pointer = 0;
+				j = 0;
 				for(iters = 0; iters <= MAXITERS; iters++)
 				{
 					switch (machine_next_step(program, tape, match_arr, &cmd_pointer, &tape_pointer, &machine_output, seq_len, tape_len))
 					{
 						case 0:
-							goto loop_exit; //fuck
+							goto machine_loop_exit; //fuck
 						case 1:
-							printf("%d ", machine_output);
+							//printf("M:%d D[%d]:%d; ", machine_output, j, desired_output[j]);
+							if (machine_output != desired_output[j])
+							{
+								//printf("\nFail\n");
+								goto machine_loop_exit;
+							}
+							j++;
+							if (j >= desired_out_len)
+							{
+								printf("Success!!!\n");
+								printf("Machine: %s\n", program);
+								goto main_loop_exit;
+							}
+							
 						case 2:
 							;
 					}
 
 				}
-				loop_exit:
+				machine_loop_exit:
 				free(tape);
-				printf("\n\n");
+				//printf("\n\n");
 				
 			}
 		} while(next_arr_seq(arr_seq, seq_len, MAXVAL));
@@ -127,6 +151,8 @@ int main()
 		free(stack);
 		free(match_arr);
 	}
+	main_loop_exit:
+	free(desired_output);
 	return 0;
 }
 
