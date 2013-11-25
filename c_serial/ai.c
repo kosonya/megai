@@ -1,41 +1,88 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 const char SYMBOLS[] = "[].+-<>";
 const int MAXVAL = 6;
+const int MAXITERS = 10000;
 
 int next_arr_seq(int *arr, int len, int maxval);
 void arr_seq_to_program(int *src, char *dst, int len);
 int validate_and_optimize(char *program, int len);
 int match_brackets(char *program, int *match_arr, int *stack, int len);
 
+/*Return codes:
+	0 - halted. Either stoppped correctly, or ran out of memory;
+	1 - has some output;
+	2 - runs, but has no output.
+*/
+int machine_next_step(char *program, int *tape, int *match_arr, int *cmd_pointer, int *tape_pointer, int *output, int program_len, int tape_len);
+
+
 int main()
 {
-	int *arr_seq, *stack, *match_arr;
-	int i, j, seq_len;
-	char *program;
+	int *arr_seq, *stack, *match_arr, *tape, tape_len, tape_pointer, cmd_pointer, machine_output;
+	int i, j, seq_len, iters;
+	char *program, pr[] = "++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>.";
 
-
+	seq_len = strlen(pr);
+	tape_len = MAXITERS*2;
+	tape_len = 100;
 	arr_seq = (int*)calloc(seq_len, sizeof(int));
 	program = (char*)malloc((seq_len+1)*sizeof(char));
 	stack = (int*)calloc(seq_len, sizeof(int));
 	match_arr = (int*)calloc(seq_len, sizeof(int));
-/*
-	for(i = 0; i <= 25; i++)
-		//program[i] = ".[.].[.[.].].[.[.].[.].]."[i];
-		program[i] = "........................."[i];
-	match_brackets(program, match_arr, stack, seq_len);
-	for(i = 0; i < 25; i++)
-		printf("%3d", i);
-	printf("\n");
-	for(i = 0; i < 25; i++)
-		printf("%3c", program[i]);
-	printf("\n");
-	for(i = 0; i < 25; i++)
-		printf("%3d", match_arr[i]);
-	printf("\n");
-*/
+	tape = (int*)calloc(tape_len, sizeof(int));	
 
+	for(i = 0; i < seq_len; i++)
+	{
+		program[i] = pr[i];
+		//printf("i = %d, program[i] = %c, pr[i] = %c\n", i, program[i], pr[i]);
+	}
+
+	//arr_seq_to_program(arr_seq, program, seq_len);
+	program[seq_len] = '\0';
+	match_brackets(program, match_arr, stack, seq_len);
+	
+	tape_pointer = tape_len/2;
+	cmd_pointer = 0;
+
+	printf("%s\n", pr);
+
+	printf("%s\n", program);
+
+	for(iters = 0; iters <= MAXITERS; iters++)
+	{
+		switch (machine_next_step(program, tape, match_arr, &cmd_pointer, &tape_pointer, &machine_output, seq_len, tape_len))
+		{
+			case 0:
+				goto loop_exit; //fuck
+			case 1:
+				printf("%d ", machine_output);
+			case 2:
+				;
+		}
+
+	}
+loop_exit:
+
+	printf("\n");
+
+	free(arr_seq);
+	free(program);
+	free(stack);
+	free(match_arr);
+	free(tape);
+
+	return 0;
+}
+
+
+int _main()
+{
+	int *arr_seq, *stack, *match_arr;
+	int i, j, seq_len;
+	char *program;
 
 	for(seq_len = 1; seq_len <= 6; seq_len++)
 	{
@@ -49,25 +96,14 @@ int main()
 			if (validate_and_optimize(program, seq_len))
 			{
 				program[seq_len] = '\0';
-				if (match_brackets(program, match_arr, stack, seq_len))
-				{
-					printf("\n");
-					for(j = 0; j < seq_len; j++)
-						printf("%3d", j);
-					printf("\n");
-					for(j = 0; j < seq_len; j++)
-						printf("%3c", program[j]);
-					printf("\n");
-					for(j = 0; j < seq_len; j++)
-						printf("%3d", match_arr[j]);
-					printf("\n\n");
-				}
-				else
-					printf("%s\n", program);
+				match_brackets(program, match_arr, stack, seq_len);
+				printf("%s\n", program);
 			}
 		} while(next_arr_seq(arr_seq, seq_len, MAXVAL));
 		free(arr_seq);
 		free(program);
+		free(stack);
+		free(match_arr);
 	}
 	return 0;
 }
@@ -177,4 +213,91 @@ int match_brackets(char *program, int *match_arr, int *stack, int len)
 			match_arr[match_arr[i]] = i;
 	}
 	return 1;
+}
+
+
+/*Return codes:
+	0 - halted. Either stoppped correctly, or ran out of memory;
+	1 - has some output;
+	2 - runs, but has no output.
+*/
+int machine_next_step(char *program, int *tape, int *match_arr, int *cmd_pointer, int *tape_pointer, int *output, int program_len, int tape_len)
+{
+	switch (program[*cmd_pointer])
+	{
+		case '+':
+			tape[*tape_pointer]++;
+			if (*cmd_pointer >= program_len - 1)
+			{
+				return 0;
+			}
+			(*cmd_pointer)++;
+			return 2;
+		case '-':
+			tape[*tape_pointer]--;
+			if (*cmd_pointer >= program_len - 1)
+			{
+				return 0;
+			}
+			(*cmd_pointer)++;
+			return 2;
+		case '>':
+			if (*tape_pointer < tape_len - 1)
+			{
+				(*tape_pointer)++;
+			}
+			else
+			{
+				return 0;
+			}
+			if (*cmd_pointer >= program_len - 1)
+			{
+				return 0;
+			}
+			(*cmd_pointer)++;
+			return 2;
+		case '<':
+			if (*tape_pointer > 0)
+			{
+				(*tape_pointer)--;
+			}
+			else
+			{
+				return 0;
+			}
+			if (*cmd_pointer >= program_len - 1)
+			{
+				return 0;
+			}
+			(*cmd_pointer)++;
+			return 2;
+		case '.':
+			*output = tape[*tape_pointer];
+			(*cmd_pointer)++;
+			return 1;
+		case '[':
+			if (tape[*tape_pointer] == 0)
+			{
+				*cmd_pointer = match_arr[*cmd_pointer];
+				return 2;
+			}
+			if (*cmd_pointer >= program_len - 1)
+			{
+				return 0;
+			}
+			(*cmd_pointer)++;
+			return 2;
+		case ']':
+			if (tape[*tape_pointer] != 0)
+			{
+				*cmd_pointer = match_arr[*cmd_pointer];
+				return 2;
+			}
+			if (*cmd_pointer >= program_len - 1)
+			{
+				return 0;
+			}
+			(*cmd_pointer)++;
+			return 2;
+	}
 }
