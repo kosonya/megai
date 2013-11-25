@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+
 
 const char SYMBOLS[] = "[].+-<>";
 const int MAXVAL = 6;
@@ -17,65 +17,6 @@ int match_brackets(char *program, int *match_arr, int *stack, int len);
 	2 - runs, but has no output.
 */
 int machine_next_step(char *program, int *tape, int *match_arr, int *cmd_pointer, int *tape_pointer, int *output, int program_len, int tape_len);
-
-
-int _main()
-{
-	int *arr_seq, *stack, *match_arr, *tape, tape_len, tape_pointer, cmd_pointer, machine_output;
-	int i, j, seq_len, iters;
-	char *program, pr[] = "++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>.";
-
-	seq_len = strlen(pr);
-	tape_len = MAXITERS*2;
-	tape_len = 100;
-	arr_seq = (int*)calloc(seq_len, sizeof(int));
-	program = (char*)malloc((seq_len+1)*sizeof(char));
-	stack = (int*)calloc(seq_len, sizeof(int));
-	match_arr = (int*)calloc(seq_len, sizeof(int));
-	tape = (int*)calloc(tape_len, sizeof(int));	
-
-	for(i = 0; i < seq_len; i++)
-	{
-		program[i] = pr[i];
-		//printf("i = %d, program[i] = %c, pr[i] = %c\n", i, program[i], pr[i]);
-	}
-
-	//arr_seq_to_program(arr_seq, program, seq_len);
-	program[seq_len] = '\0';
-	match_brackets(program, match_arr, stack, seq_len);
-	
-	tape_pointer = tape_len/2;
-	cmd_pointer = 0;
-
-	printf("%s\n", pr);
-
-	printf("%s\n", program);
-
-	for(iters = 0; iters <= MAXITERS; iters++)
-	{
-		switch (machine_next_step(program, tape, match_arr, &cmd_pointer, &tape_pointer, &machine_output, seq_len, tape_len))
-		{
-			case 0:
-				goto loop_exit; //fuck
-			case 1:
-				printf("%d ", machine_output);
-			case 2:
-				;
-		}
-
-	}
-loop_exit:
-
-	printf("\n");
-
-	free(arr_seq);
-	free(program);
-	free(stack);
-	free(match_arr);
-	free(tape);
-
-	return 0;
-}
 
 
 int main()
