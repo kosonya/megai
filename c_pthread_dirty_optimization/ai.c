@@ -2,14 +2,22 @@
 #include <stdlib.h>
 
 
+struct ThreadMachineData
+{
+	int *tape_len, *program_len, *desired_out;
+	char *program;
+};
+
 const char SYMBOLS[] = "[].+-<>";
 const int MAXVAL = 6;
 const int MAXITERS = 10000;
+
 
 int next_arr_seq(int *arr, int len, int maxval);
 void arr_seq_to_program(int *src, char *dst, int len);
 int validate_and_optimize(char *program, int len);
 int match_brackets(char *program, int *match_arr, int *stack, int len);
+void *machine_thread(struct ThreadMachineData *data);
 
 /*Return codes:
 	0 - halted. Either stoppped correctly, or ran out of memory;
@@ -285,4 +293,10 @@ int machine_next_step(char *program, int *tape, int *match_arr, int *cmd_pointer
 			(*cmd_pointer)++;
 			return 2;
 	}
+}
+
+void *machine_thread(struct ThreadMachineData *data)
+{
+	int iters, machine_output, j, cmd_pointer, tape_pointer;
+	return NULL;
 }
