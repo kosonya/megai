@@ -1,17 +1,21 @@
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <pthread.h>
+#include <semaphore.h>
 
 struct ThreadMachineData
 {
-	int *tape_len, *program_len, *desired_out;
+	int *match_arr, *tape, *tape_len, *program_len, *desired_out, *result_stack, *stack_head, *matching_stack, *desired_out_len;
+	int thread_id;
 	char *program;
+	pthread_mutex_t *stack_head_mutex;
+	sem_t *worker_semaphore;
 };
 
 const char SYMBOLS[] = "[].+-<>";
 const int MAXVAL = 6;
 const int MAXITERS = 10000;
-
+const int NTHREADS = 8;
 
 int next_arr_seq(int *arr, int len, int maxval);
 void arr_seq_to_program(int *src, char *dst, int len);
@@ -298,5 +302,42 @@ int machine_next_step(char *program, int *tape, int *match_arr, int *cmd_pointer
 void *machine_thread(struct ThreadMachineData *data)
 {
 	int iters, machine_output, j, cmd_pointer, tape_pointer;
+	match_brackets(data -> program, data -> match_arr, data -> matching_stack, *(data -> program_len));
+	for(j = 0; j < *(data -> tape_len); j++)
+		(data -> tape)[j] = 0;
+	tape_pointer = *(data -> tape_len)/2;
+	cmd_pointer = 0;
+	j = 0;
+	for(iters = 0; iters <= MAXITERS; iters++)
+	{
+		switch (machine_next_step(data -> program, data -> tape, data -> match_arr, &cmd_pointer, &tape_pointer, &machine_output, *(data -> program_len)))
+		{
+			case 0:
+				goto machine_loop_exit; //fuck
+			case 1:
+				//printf("M:%d D[%d]:%d; ", machine_output, j, desired_output[j]);
+				if (machine_output != (data -> desired_output)[j])
+				{
+					//printf("\nFail\n");
+					goto machine_loop_exit;
+				}
+				j++;
+				if (j >= *(data -> desired_out_len))
+				{
+								printf("Success!!!\n");
+								printf("Desired output: ");
+								for(j = 0; j < desired_out_len; j++)
+									printf("%d ", desired_output[j]);
+								printf("\nMachine: %s\n", program);
+								goto main_loop_exit;
+							}
+							
+						case 2:
+							;
+					}
+
+				}
+				machine_loop_exit:
+				;
 	return NULL;
 }
