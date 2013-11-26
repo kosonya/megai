@@ -23,7 +23,7 @@
 #include <semaphore.h>
 #include <string.h>
 
-const int NBGTHREADS = 1;
+const int NBGTHREADS = 4;
 
 struct ThreadMachineData
 {
@@ -58,7 +58,7 @@ int main()
 	int i, seq_len, desired_out_len, n_thread, tmp, next_available;
 	//int desired_output_st[] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34};
 	//int desired_output_st[] = {3, 6, 9, 12, 15};
-	int desired_output_st[] = {0};
+	int desired_output_st[] = {3};
 
 	sem_t worker_semaphore;
 	pthread_t threads[NBGTHREADS];
@@ -85,7 +85,7 @@ int main()
 
 	}
 
-	for(seq_len = 1; seq_len <= 1; seq_len++)
+	for(seq_len = 1; seq_len <= 10; seq_len++)
 	{
 		printf("Testing programs of length = %d\n", seq_len);
 		arr_seq = (int*)calloc(seq_len, sizeof(int));
@@ -112,8 +112,6 @@ int main()
 
 			threads_data[n_thread].worker_semaphore = &worker_semaphore;
 			threads_data[n_thread].tape_len = tape_len;
-			printf("Tape len: %d -> %d\n", tape_len, threads_data[n_thread].tape_len);
-
 			threads_data[n_thread].program_len = seq_len;
 			threads_data[n_thread].desired_out = desired_output;
 			threads_data[n_thread].desired_out_len = desired_out_len;
@@ -149,15 +147,7 @@ int main()
 				printf("Thread %d will be the next worker\n", n_thread);
 				next_available = n_thread;
 			}
-			printf("next available: %d\n", next_available);
-			printf("Memcpy\n");
 			memcpy(arr_programs[next_available], arr_seq, sizeof(int)*seq_len);
-			printf("done\n");
-	/*		for(i = 0; i < seq_len; i++)
-			{
-				arr_programs[next_available][i] = arr_seq[i];
-				printf("%d: %d -> %d\n", i, arr_programs[next_available][i], arr_seq[i]);
-			}*/
 			pthread_create(&threads[next_available], NULL, machine_thread, &threads_data[next_available]);
 			
 
@@ -369,17 +359,22 @@ void *machine_thread(void *param)
 	*(data -> is_available) = 0;
 	pthread_mutex_unlock( data -> is_available_mutex);
 
-	//printf("Thread has started\n");
+	printf("Thread has started\n");
 	//printf("Tape len from inside thread: %d\n", data -> tape_len);
+
+	printf("Program len: %d\nRaw: ", data -> program_len);
+	for(i = 0; i < data -> program_len; i++)
+		printf("%d ", (data -> arr_program)[i]);
+	printf("\nTranslating to string\n");
 
 	arr_seq_to_program(data -> arr_program, data -> program, data -> program_len);
 	(data -> program)[data -> program_len] = '\0';
 
-	//printf("Processing program: %s\n", data -> program);
+	printf("Processing program: %s\n", data -> program);
 
 	if (! validate_and_optimize(data -> program, data -> program_len) )
 	{
-		//printf("This program is bad, exiting\n");
+		printf("This program is bad, exiting\n");
 		*(data -> success) = 0;
 
 		pthread_mutex_lock( data -> is_available_mutex );
@@ -389,13 +384,13 @@ void *machine_thread(void *param)
 	}
 	else
 	{
-		//printf("This program is good, processing\nCleaning the tape\n");
+		printf("This program is good, processing\nCleaning the tape\n");
 		for(j = 0; j < (data -> tape_len); j++)
 		{
 		//	printf("AAA! %d ", j);
 			(data -> tape)[j] = 0;
 		}
-		//printf("Tape cleaned\n");
+		printf("Tape cleaned\n");
 		match_brackets(data -> program, data -> match_arr, data -> stack, data -> program_len);
 
 		tape_pointer = (data -> tape_len)/2;
