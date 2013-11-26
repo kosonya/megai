@@ -36,7 +36,7 @@ struct ThreadMachineData
 const char SYMBOLS[] = "[].+-<>";
 const int MAXVAL = 6;
 const int MAXITERS = 10000;
-const int NBGTHREADS = 4;
+const int NBGTHREADS = 8;
 
 int next_arr_seq(int *arr, int len, int maxval);
 void arr_seq_to_program(int *src, char *dst, int len);
@@ -119,8 +119,9 @@ int main()
 
 		do
 		{
-
-			sem_wait(&worker_semaphore);			
+			//printf("Waiting for the semaphore\n");
+			sem_wait(&worker_semaphore);
+			//printf("Aquired\n");			
 			for(n_thread = 0; n_thread < NBGTHREADS; n_thread++)
 			{
 				pthread_mutex_lock( threads_data[n_thread].is_available_mutex );
@@ -128,7 +129,7 @@ int main()
 				pthread_mutex_unlock( threads_data[n_thread].is_available_mutex );
 				if(!tmp)
 				{
-					printf("Thread %d is bussy\n", n_thread);
+					//printf("Thread %d is bussy\n", n_thread);
 					continue;
 				}
 
@@ -144,23 +145,68 @@ int main()
 					printf("Machine: %s\n", programs[n_thread]);
 					return 0;
 				}
-				printf("Thread %d will be the next worker\n", n_thread);
+				//printf("Thread %d will be the next worker\n", n_thread);
 				next_available = n_thread;
 			}
-			memcpy(arr_programs[next_available], arr_seq, sizeof(int)*seq_len);
+			//printf("Memcpying\n");
+			//memcpy(arr_programs[next_available], arr_seq, sizeof(int)*seq_len);
+			for(i = 0; i < seq_len; i++)
+			{
+				//printf("%d: %d -> ", i, arr_seq[i]);
+				arr_programs[next_available][i] = arr_seq[i];
+			//	printf("%d\n", arr_programs[next_available][i]);
+			}
+			//printf("Starting a new thread\n");
 			pthread_create(&threads[next_available], NULL, machine_thread, &threads_data[next_available]);
+			//printf("Started\n");
 			
 
 
 		} while(next_arr_seq(arr_seq, seq_len, MAXVAL));
+		//printf("Ran out of programs of length %d\n", seq_len);
+
+		//printf("Waiting for the semaphore\n");
+		sem_wait(&worker_semaphore);
+		//printf("Aquired\n");			
 		for(n_thread = 0; n_thread < NBGTHREADS; n_thread++)
 		{
-			pthread_join(threads[n_thread], NULL);
+			pthread_mutex_lock( threads_data[n_thread].is_available_mutex );
+			tmp = is_available[n_thread];
+			pthread_mutex_unlock( threads_data[n_thread].is_available_mutex );
+			if(!tmp)
+			{
+				//printf("Thread %d is bussy\n", n_thread);
+				//printf("Joining thread %d\n", n_thread);
+				pthread_join(threads[n_thread], NULL);
+			}
+			if(success[n_thread])
+			{
+				printf("Success!\n");
+				printf("Desired output: ");
+				for(i = 0; i < desired_out_len; i++)
+				{
+					printf("%d ", desired_output[i]);
+				}
+				printf("\n");
+				printf("Machine: %s\n", programs[n_thread]);
+				return 0;
+			}
+
+		}
+
+		for(n_thread = 0; n_thread < NBGTHREADS; n_thread++)
+		{
+
+			//printf("Freeing arr_programs[%d]\n", n_thread);
 			free(arr_programs[n_thread]);
+			//printf("Freeing stacks[%d]\n", n_thread);
 			free(stacks[n_thread]);
+			//printf("Freeing match_arrs[%d]\n", n_thread);
 			free(match_arrs[n_thread]);
+			//printf("Freeing programs[%d]\n", n_thread);
 			free(programs[n_thread]);
 		}
+		//printf("Freeing arr_seq\n");
 		free(arr_seq);
 	}
 
@@ -359,38 +405,40 @@ void *machine_thread(void *param)
 	*(data -> is_available) = 0;
 	pthread_mutex_unlock( data -> is_available_mutex);
 
-	printf("Thread has started\n");
+	//printf("Thread has started\n");
 	//printf("Tape len from inside thread: %d\n", data -> tape_len);
 
-	printf("Program len: %d\nRaw: ", data -> program_len);
-	for(i = 0; i < data -> program_len; i++)
-		printf("%d ", (data -> arr_program)[i]);
-	printf("\nTranslating to string\n");
+	//printf("Program len: %d\nRaw: ", data -> program_len);
+	//for(i = 0; i < data -> program_len; i++)
+	//	printf("%d ", (data -> arr_program)[i]);
+	//printf("\nTranslating to string\n");
 
 	arr_seq_to_program(data -> arr_program, data -> program, data -> program_len);
 	(data -> program)[data -> program_len] = '\0';
 
-	printf("Processing program: %s\n", data -> program);
+	//printf("Processing program: %s\n", data -> program);
 
 	if (! validate_and_optimize(data -> program, data -> program_len) )
 	{
-		printf("This program is bad, exiting\n");
+		//printf("This program is bad, exiting\n");
 		*(data -> success) = 0;
-
+		sem_post(data -> worker_semaphore);
 		pthread_mutex_lock( data -> is_available_mutex );
 		*(data -> is_available) = 1;
 		pthread_mutex_unlock( data -> is_available_mutex);
-		sem_post(data -> worker_semaphore);
+		//printf("Exited\n");
+		//pthread_exit(NULL);
+		return NULL;
 	}
 	else
 	{
-		printf("This program is good, processing\nCleaning the tape\n");
+		//printf("This program is good, processing\nCleaning the tape\n");
 		for(j = 0; j < (data -> tape_len); j++)
 		{
 		//	printf("AAA! %d ", j);
 			(data -> tape)[j] = 0;
 		}
-		printf("Tape cleaned\n");
+		//printf("Tape cleaned\n");
 		match_brackets(data -> program, data -> match_arr, data -> stack, data -> program_len);
 
 		tape_pointer = (data -> tape_len)/2;
@@ -402,35 +450,35 @@ void *machine_thread(void *param)
 			{
 				case 0:
 					*(data -> success) = 0;
-
+					sem_post(data -> worker_semaphore);
 					pthread_mutex_lock( data -> is_available_mutex );
 					*(data -> is_available) = 1;
 					pthread_mutex_unlock( data -> is_available_mutex);
-					sem_post(data -> worker_semaphore);
 
+					//pthread_exit(NULL);
 					return NULL;
 				case 1:
 					if (machine_output != (data -> desired_out)[j])
 					{
 						*(data -> success) = 0;
-
+						sem_post(data -> worker_semaphore);
 						pthread_mutex_lock( data -> is_available_mutex );
 						*(data -> is_available) = 1;
 						pthread_mutex_unlock( data -> is_available_mutex);
-						sem_post(data -> worker_semaphore);
 
+						//pthread_exit(NULL);
 						return NULL;
 					}
 					j++;
 					if (j >= data -> desired_out_len)
 					{
 						*(data -> success) = 1;
-
+						sem_post(data -> worker_semaphore);
 						pthread_mutex_lock( data -> is_available_mutex );
 						*(data -> is_available) = 1;
 						pthread_mutex_unlock( data -> is_available_mutex);
-						sem_post(data -> worker_semaphore);
 
+						//pthread_exit(NULL);
 						return NULL;
 					}
 							
@@ -443,6 +491,6 @@ void *machine_thread(void *param)
 				
 	}
 
-
+	//pthread_exit(NULL);
 	return NULL;
 }
