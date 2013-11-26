@@ -149,12 +149,12 @@ int main()
 				next_available = n_thread;
 			}
 			//printf("Memcpying\n");
-			//memcpy(arr_programs[next_available], arr_seq, sizeof(int)*seq_len);
+			memcpy(arr_programs[next_available], arr_seq, sizeof(int)*seq_len);
 			for(i = 0; i < seq_len; i++)
 			{
 				//printf("%d: %d -> ", i, arr_seq[i]);
 				arr_programs[next_available][i] = arr_seq[i];
-			//	printf("%d\n", arr_programs[next_available][i]);
+				//printf("%d\n", arr_programs[next_available][i]);
 			}
 			//printf("Starting a new thread\n");
 			pthread_create(&threads[next_available], NULL, machine_thread, &threads_data[next_available]);
@@ -194,23 +194,23 @@ int main()
 
 		}
 
-		for(n_thread = 0; n_thread < NBGTHREADS; n_thread++)
+		/*for(n_thread = 0; n_thread < NBGTHREADS; n_thread++)
 		{
 
-			//printf("Freeing arr_programs[%d]\n", n_thread);
+			printf("Freeing arr_programs[%d]\n", n_thread);
 			free(arr_programs[n_thread]);
-			//printf("Freeing stacks[%d]\n", n_thread);
+			printf("Freeing stacks[%d]\n", n_thread);
 			free(stacks[n_thread]);
-			//printf("Freeing match_arrs[%d]\n", n_thread);
+			printf("Freeing match_arrs[%d]\n", n_thread);
 			free(match_arrs[n_thread]);
-			//printf("Freeing programs[%d]\n", n_thread);
+			printf("Freeing programs[%d]\n", n_thread);
 			free(programs[n_thread]);
 		}
-		//printf("Freeing arr_seq\n");
-		free(arr_seq);
+		printf("Freeing arr_seq\n");
+		free(arr_seq);*/
 	}
 
-	free(desired_output);
+	//free(desired_output);
 	
 	return 0;
 }
