@@ -16,7 +16,7 @@ int match_brackets(char *program, int *match_arr, int *stack, int len);
 	1 - has some output;
 	2 - runs, but has no output.
 */
-int machine_next_step(char *program, int *tape, int *match_arr, int *cmd_pointer, int *tape_pointer, int *output, int program_len, int tape_len);
+int machine_next_step(char *program, int *tape, int *match_arr, int *cmd_pointer, int *tape_pointer, int *output, int program_len);
 
 
 int main()
@@ -24,11 +24,11 @@ int main()
 	int *arr_seq, *stack, *match_arr, *tape, tape_len, tape_pointer, cmd_pointer, machine_output, *desired_output;
 	int i, seq_len, iters, desired_out_len, j;
 	char *program;
-	//int desired_output_st[] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34};
-	int desired_output_st[] = {3, 6, 9, 12, 15};
+	int desired_output_st[] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34};
+	//int desired_output_st[] = {3, 6, 9, 12, 15};
 
 
-	tape_len = MAXITERS*2;
+	tape_len = (MAXITERS+10)*2; //just in case
 
 	tape = (int*)calloc(tape_len, sizeof(int));
 
@@ -40,7 +40,7 @@ int main()
 		//printf("%d - %d\n", i, desired_output[i]);
 	}
 
-	for(seq_len = 1; seq_len <= 9; seq_len++)
+	for(seq_len = 1; seq_len <= 50; seq_len++)
 	{
 		printf("Testing programs of length = %d\n", seq_len);
 		arr_seq = (int*)calloc(seq_len, sizeof(int));
@@ -62,7 +62,7 @@ int main()
 				j = 0;
 				for(iters = 0; iters <= MAXITERS; iters++)
 				{
-					switch (machine_next_step(program, tape, match_arr, &cmd_pointer, &tape_pointer, &machine_output, seq_len, tape_len))
+					switch (machine_next_step(program, tape, match_arr, &cmd_pointer, &tape_pointer, &machine_output, seq_len))
 					{
 						case 0:
 							goto machine_loop_exit; //fuck
@@ -129,11 +129,12 @@ void arr_seq_to_program(int *src, char *dst, int len)
 
 int validate_and_optimize(char *program, int len)
 {
-	int i, has_io = 0, nesting_level = 0;
+	int i, has_io = 0, nesting_level = 0, has_cycles = 0;
 	for(i = 0; i < len; i++)
 	{
 		if (program[i] == '[')
 		{
+			has_cycles = 1;
 			if ( (i < len - 1) && program[i+1] == ']')
 				return 0;
 			nesting_level++;
@@ -178,7 +179,7 @@ int validate_and_optimize(char *program, int len)
 			}
 		}
 	}
-	if (!has_io || nesting_level)
+	if (!has_io || !has_cycles || nesting_level)
 		return 0;
 	return 1;
 }
@@ -219,7 +220,7 @@ int match_brackets(char *program, int *match_arr, int *stack, int len)
 	1 - has some output;
 	2 - runs, but has no output.
 */
-int machine_next_step(char *program, int *tape, int *match_arr, int *cmd_pointer, int *tape_pointer, int *output, int program_len, int tape_len)
+int machine_next_step(char *program, int *tape, int *match_arr, int *cmd_pointer, int *tape_pointer, int *output, int program_len)
 {
 	switch (program[*cmd_pointer])
 	{
@@ -240,14 +241,7 @@ int machine_next_step(char *program, int *tape, int *match_arr, int *cmd_pointer
 			(*cmd_pointer)++;
 			return 2;
 		case '>':
-			if (*tape_pointer < tape_len - 1)
-			{
-				(*tape_pointer)++;
-			}
-			else
-			{
-				return 0;
-			}
+			(*tape_pointer)++;
 			if (*cmd_pointer >= program_len - 1)
 			{
 				return 0;
@@ -255,14 +249,7 @@ int machine_next_step(char *program, int *tape, int *match_arr, int *cmd_pointer
 			(*cmd_pointer)++;
 			return 2;
 		case '<':
-			if (*tape_pointer > 0)
-			{
-				(*tape_pointer)--;
-			}
-			else
-			{
-				return 0;
-			}
+			(*tape_pointer)--;
 			if (*cmd_pointer >= program_len - 1)
 			{
 				return 0;

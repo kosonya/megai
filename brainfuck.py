@@ -155,7 +155,9 @@ def main():
     <-,+                     Read next character
 ]                            End character reading loop
 """
+
     bf = BrainFuckMachine(machine = ".[.][.[.].].[.[.].[.].].", maximum_cell_value = 255, input_allowed = True)
+
     bf.match_braces()
     myjoin = lambda lst: reduce(lambda x, y: x + " %2s"%str(y), lst, "")
     print myjoin(range(len(bf.machine)))
