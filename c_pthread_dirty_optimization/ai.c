@@ -41,7 +41,7 @@ struct ThreadMachineData
 const char SYMBOLS[] = "[].+-<>";
 const int MAXVAL = 6;
 const int MAXITERS = 10000;
-const int NBGTHREADS = 8;
+const int NBGTHREADS = 1;
 const int MAXPROGRAMSIZE = 10;
 const int TAPELEN = 20020; //just in case
 
@@ -64,10 +64,10 @@ int machine_next_step(char *program, int *tape, int *match_arr, int *cmd_pointer
 int main()
 {
 	int *arr_seq, tape_len, *desired_output, *arr_programs[NBGTHREADS];
-	int i, seq_len, desired_out_len, n_thread, tmp, next_available;
+	int i, seq_len, desired_out_len, n_thread, tmp, next_available, semval;
 	//int desired_output_st[] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34};
 	//int desired_output_st[] = {3, 6, 9, 12, 15};
-	int desired_output_st[] = {0};
+	int desired_output_st[] = {1};
 	char winner_program[MAXPROGRAMSIZE+1];
 
 	struct MutexedFlag is_running[NBGTHREADS], success[NBGTHREADS], global_exit_flag;
@@ -157,13 +157,15 @@ int main()
 				if(get_mutexed_flag(&is_running[n_thread]))
 				{
 					#ifdef DEBUG_ON
-						printf("Thread %d is busy, skipping\n", n_thread);
+						sem_getvalue(&finished_task_semaphore[n_thread], &semval);
+						printf("Thread %d is busy, semaphore value: %d, skipping\n", n_thread, semval);
 					#endif
 					continue;
 				}
 
 				#ifdef DEBUG_ON
-					printf("Thread %d is not busy, investigating\n", n_thread);
+					sem_getvalue(&finished_task_semaphore[n_thread], &semval);
+					printf("Thread %d is not busy, semaphore value: %d, investigating\n", n_thread, semval);
 				#endif
 
 				if(get_mutexed_flag(&success[n_thread]))
@@ -212,11 +214,34 @@ int main()
 
 		} while(next_arr_seq(arr_seq, seq_len, MAXVAL));
 
+		#ifdef DEBUG_ON
+			printf("Ran out of programs of length = %d; waiting for at least one thread to finish\n", seq_len);
+		#endif
+
 		sem_wait(&common_worker_semaphore);
+		sem_post(&common_worker_semaphore);
+		#ifdef DEBUG_ON
+			printf("Some thread finished\n");
+		#endif
 		
 		for(n_thread = 0; n_thread < NBGTHREADS; n_thread++)
 		{
-			sem_wait(&finished_task_semaphore[n_thread]);
+			#ifdef DEBUG_ON
+				printf("Checking thread %d's running status\n", n_thread);
+			#endif
+			if(get_mutexed_flag(&is_running[n_thread]))
+			{
+				#ifdef DEBUG_ON
+					printf("Waiting for thread %d's semaphore\n", n_thread);
+				#endif
+				sem_wait(&finished_task_semaphore[n_thread]);
+				#ifdef DEBUG_ON
+					printf("Thread %d's semaphore aquired\n", n_thread);
+				#endif
+			}
+			#ifdef DEBUG_ON
+				printf("Thread %d is not running\n", n_thread);
+			#endif
 			if(get_mutexed_flag(&success[n_thread]))
 			{
 				set_mutexed_flag(&global_exit_flag, 1);
@@ -452,8 +477,13 @@ void *machine_thread(void *param)
 		sem_wait(data -> has_new_task_semaphore);
 
 		#ifdef DEBUG_ON
-			printf("Job received\n");
+			printf("Job received: ");
+			for(i = 0; i < *(data -> program_len); i++)
+				printf("%d ", (data -> arr_program)[i]);
+			printf("\n");
 		#endif
+
+
 		arr_seq_to_program(data -> arr_program, program, *(data -> program_len));
 		program[*(data -> program_len)] = '\0';
 
@@ -514,8 +544,22 @@ void *machine_thread(void *param)
 		}
 		machine_cycle_exit:
 		set_mutexed_flag(data -> is_running, 0);
+		#ifdef DEBUG_ON
+			sem_getvalue(data -> finished_task_semaphore, &semval);
+			printf("Finished work semaphore: %d, releasing\n", semval);
+		#endif
 		sem_post(data -> finished_task_semaphore);
+		#ifdef DEBUG_ON
+			sem_getvalue(data -> finished_task_semaphore, &semval);
+			printf("Finished work semaphore: %d, released\n", semval);
+			sem_getvalue(data -> common_worker_semaphore, &semval);
+			printf("Common worker semaphore: %d, releasing\n", semval);
+		#endif
 		sem_post(data -> common_worker_semaphore);
+		#ifdef DEBUG_ON
+			sem_getvalue(data -> common_worker_semaphore, &semval);
+			printf("Common worker semaphore: %d, released\n", semval);
+		#endif
 	}
 
 
