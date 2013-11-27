@@ -23,26 +23,35 @@
 #include <semaphore.h>
 #include <string.h>
 
+#define DEBUG_ON 1
 
+struct MutexedFlag
+{
+	int flag;
+	pthread_mutex_t mutex;
+};
 
 struct ThreadMachineData
 {
-	int *tape, tape_len, program_len, *desired_out, desired_out_len, *stack, *success, *is_available, *arr_program, *match_arr;
-	char *program;
-	pthread_mutex_t *is_available_mutex;
-	sem_t *worker_semaphore;
+	int *arr_program, *program_len;
+	struct MutexedFlag *is_running, *global_exit_flag, *success; 
+	sem_t *common_worker_semaphore, *has_new_task_semaphore;
 };
 
 const char SYMBOLS[] = "[].+-<>";
 const int MAXVAL = 6;
 const int MAXITERS = 10000;
 const int NBGTHREADS = 8;
+const int MAXPROGRAMSIZE = 50;
+const int TAPELEN = (MAXITERS+10)*2; //just in case
 
 int next_arr_seq(int *arr, int len, int maxval);
 void arr_seq_to_program(int *src, char *dst, int len);
 int validate_and_optimize(char *program, int len);
 int match_brackets(char *program, int *match_arr, int *stack, int len);
 void *machine_thread(void *);
+int get_mutexed_flag(struct MutexedFlag *mflag);
+void set_mutexed_flag(struct MutexedFlag *mflag, int value);
 
 /*Return codes:
 	0 - halted. Either stoppped correctly, or ran out of memory;
@@ -60,22 +69,10 @@ int main()
 	//int desired_output_st[] = {3, 6, 9, 12, 15};
 	int desired_output_st[] = {3};
 
-	sem_t worker_semaphore;
-	pthread_t threads[NBGTHREADS];
-	pthread_mutex_t mutexes[NBGTHREADS];
+	struct MutexedFlag is_running[NBGTHREADS], success[NBGTHREADS], global_exit_flag;
 	struct ThreadMachineData threads_data[NBGTHREADS];
-	int *arr_programs[NBGTHREADS], *tapes[NBGTHREADS], *match_arrs[NBGTHREADS], *stacks[NBGTHREADS], is_available[NBGTHREADS], success[NBGTHREADS];
-	char *programs[NBGTHREADS];
-
-	sem_init(&worker_semaphore, 0, NBGTHREADS);
-
-	tape_len = (MAXITERS+10)*2; //just in case
-
-	for(n_thread = 0; n_thread < NBGTHREADS; n_thread++)
-	{
-		tapes[n_thread] = (int*)calloc(tape_len, sizeof(int));
-	}
-
+	sem_t common_worker_semaphore, has_new_task_semaphore[NBGTHREADS];
+	pthread_t threads[NBGTHREADS];
 
 	desired_out_len = sizeof(desired_output_st)/sizeof(int);
 	desired_output = (int*)malloc(desired_out_len*sizeof(int));
@@ -84,6 +81,18 @@ int main()
 		desired_output[i] = desired_output_st[i];
 
 	}
+
+
+	sem_init(&common_worker_semaphore, 0, NBGTHREADS);
+	pthread_mutex_init(&(global_exit_flag.flag), NULL);
+
+	for(n_thread = 0; n_thread < NBGTHREADS; n_thread++)
+	{
+		tapes[n_thread] = (int*)calloc(tape_len, sizeof(int));
+	}
+
+
+
 
 	for(seq_len = 1; seq_len <= 10; seq_len++)
 	{
@@ -399,7 +408,31 @@ int machine_next_step(char *program, int *tape, int *match_arr, int *cmd_pointer
 void *machine_thread(void *param)
 {
 	int iters, machine_output, i, j, cmd_pointer, tape_pointer;
+	int tape[TAPELEN], int stack[MAXPROGRAMSIZE], int mach_arr[MAXPROGRAMSIZE];
 	struct ThreadMachineData *data = (struct ThreadMachineData*)param;
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 	pthread_mutex_lock( data -> is_available_mutex );
 	*(data -> is_available) = 0;
@@ -493,4 +526,21 @@ void *machine_thread(void *param)
 
 	//pthread_exit(NULL);
 	return NULL;
+}
+
+
+int get_mutexed_flag(struct MutexedFlag *mflag)
+{
+	int res;
+	pthread_mutex_lock( mflag -> mutex );
+	res = mflag -> flag;
+	pthread_mutex_unlock( mflag -> mutex);
+	return res;
+}
+
+void set_mutexed_flag(struct MutexedFlag *mflag, int value)
+{
+	pthread_mutex_lock( mflag -> mutex );
+	mflag -> flag = value;
+	pthread_mutex_unlock( mflag -> mutex);
 }
