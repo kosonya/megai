@@ -35,7 +35,7 @@ struct ThreadMachineData
 {
 	int *arr_program, *program_len;
 	struct MutexedFlag *is_running, *global_exit_flag, *success; 
-	sem_t *common_worker_semaphore, *has_new_task_semaphore;
+	sem_t *common_worker_semaphore, *has_new_task_semaphore, *finished_task_semaphore;
 };
 
 const char SYMBOLS[] = "[].+-<>";
@@ -63,15 +63,16 @@ int machine_next_step(char *program, int *tape, int *match_arr, int *cmd_pointer
 
 int main()
 {
-	int *arr_seq, tape_len, *desired_output;
+	int *arr_seq, tape_len, *desired_output, *arr_programs[NBGTHREADS];
 	int i, seq_len, desired_out_len, n_thread, tmp, next_available;
 	//int desired_output_st[] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34};
 	//int desired_output_st[] = {3, 6, 9, 12, 15};
 	int desired_output_st[] = {3};
+	char winner_program[MAXPROGRAMSIZE+1];
 
 	struct MutexedFlag is_running[NBGTHREADS], success[NBGTHREADS], global_exit_flag;
 	struct ThreadMachineData threads_data[NBGTHREADS];
-	sem_t common_worker_semaphore, has_new_task_semaphore[NBGTHREADS];
+	sem_t common_worker_semaphore, has_new_task_semaphore[NBGTHREADS], finished_task_semaphore[NBGTHREADS];
 	pthread_t threads[NBGTHREADS];
 
 	desired_out_len = sizeof(desired_output_st)/sizeof(int);
@@ -84,66 +85,67 @@ int main()
 
 
 	sem_init(&common_worker_semaphore, 0, NBGTHREADS);
-	pthread_mutex_init(&(global_exit_flag.flag), NULL);
+	pthread_mutex_init(&(global_exit_flag.mutex), NULL);
+	global_exit_flag.flag = 0;
 
 	for(n_thread = 0; n_thread < NBGTHREADS; n_thread++)
 	{
-		tapes[n_thread] = (int*)calloc(tape_len, sizeof(int));
+		pthread_mutex_init(&(is_running[n_thread].mutex), NULL);
+		pthread_mutex_init(&(success[n_thread].mutex), NULL);
+		is_running[n_thread].flag = 0;
+		success[n_thread].flag = 0;
+		sem_init(&has_new_task_semaphore[n_thread], 1, 1);
+		sem_init(&finished_task_semaphore[n_thread], 1, 1);
+
+		arr_programs[n_thread] = (int*)calloc(MAXPROGRAMSIZE, sizeof(int));
+
+		threads_data[n_thread].program_len = &seq_len;
+		threads_data[n_thread].is_running = &is_running[n_thread];
+		threads_data[n_thread].success = &success[n_thread];
+		threads_data[n_thread].common_worker_semaphore = &common_worker_semaphore;
+		threads_data[n_thread].has_new_task_semaphore = &has_new_task_semaphore[n_thread];
+		threads_data[n_thread].finished_task_semaphore = &finished_task_semaphore[n_thread];
+		threads_data[n_thread].arr_program = arr_programs[n_thread];
+
+		pthread_create(&threads[n_thread], NULL, machine_thread, &threads_data[n_thread]);
+
 	}
-
-
-
 
 	for(seq_len = 1; seq_len <= 10; seq_len++)
 	{
 		printf("Testing programs of length = %d\n", seq_len);
 		arr_seq = (int*)calloc(seq_len, sizeof(int));
-		for(n_thread = 0; n_thread < NBGTHREADS; n_thread++)
-		{
-			arr_programs[n_thread] = (int*)calloc(seq_len, sizeof(int));
-			stacks[n_thread] = (int*)calloc(seq_len, sizeof(int));
-			match_arrs[n_thread] = (int*)calloc(seq_len, sizeof(int));
-			programs[n_thread] = (char*)malloc((seq_len+1)*sizeof(char));
-			
-			threads_data[n_thread].arr_program = arr_programs[n_thread];
-			threads_data[n_thread].stack = stacks[n_thread];
-			threads_data[n_thread].match_arr = match_arrs[n_thread];
-			threads_data[n_thread].program = programs[n_thread];
-
-			threads_data[n_thread].tape = tapes[n_thread];
-
-			is_available[n_thread] = 1;
-			success[n_thread] = 0;
-			threads_data[n_thread].is_available = &is_available[n_thread];
-			threads_data[n_thread].success = &success[n_thread];
-			threads_data[n_thread].is_available_mutex = &mutexes[n_thread];
-			pthread_mutex_init(threads_data[n_thread].is_available_mutex, NULL);
-
-			threads_data[n_thread].worker_semaphore = &worker_semaphore;
-			threads_data[n_thread].tape_len = tape_len;
-			threads_data[n_thread].program_len = seq_len;
-			threads_data[n_thread].desired_out = desired_output;
-			threads_data[n_thread].desired_out_len = desired_out_len;
-		}
-
 		do
 		{
-			//printf("Waiting for the semaphore\n");
+			#ifdef DEBUG_ON
+				printf("Waiting for any worker thread to be available\n");
+			#endif
 			sem_wait(&worker_semaphore);
-			//printf("Aquired\n");			
+			#ifdef DEBIG_ON
+				printf("Some thread is free\n");
+			#endif			
+					
 			for(n_thread = 0; n_thread < NBGTHREADS; n_thread++)
 			{
-				pthread_mutex_lock( threads_data[n_thread].is_available_mutex );
-				tmp = is_available[n_thread];
-				pthread_mutex_unlock( threads_data[n_thread].is_available_mutex );
-				if(!tmp)
+				#ifdef DEBUG_ON
+					printf("Processing thread %d\n", n_thread);
+				#endif
+
+				if(get_mutexed_flag(&is_running[n_thread]))
 				{
-					//printf("Thread %d is bussy\n", n_thread);
+					#ifdef DEBUG_ON
+						printf("Thread %d is busy, skipping\n", n_thread);
+					#endif
 					continue;
 				}
 
-				if(success[n_thread])
+				#ifdef DEBUG_ON
+					printf("Thread %d is not busy, investigating\n", n_thread);
+				#endif
+
+				if(get_mutexed_flag(&success[n_thread]))
 				{
+					set_mutexed_flag(&global_exit_flag, 1);
 					printf("Success!\n");
 					printf("Desired output: ");
 					for(i = 0; i < desired_out_len; i++)
@@ -151,23 +153,18 @@ int main()
 						printf("%d ", desired_output[i]);
 					}
 					printf("\n");
-					printf("Machine: %s\n", programs[n_thread]);
+					arr_seq_to_program(arr_programs[n_thread], winner_program, seq_len);
+					winner_program[seq_len] = '\0';
+					printf("Machine: %s\n", winner_program);
 					return 0;
 				}
-				//printf("Thread %d will be the next worker\n", n_thread);
+
 				next_available = n_thread;
 			}
-			//printf("Memcpying\n");
+
 			memcpy(arr_programs[next_available], arr_seq, sizeof(int)*seq_len);
-			for(i = 0; i < seq_len; i++)
-			{
-				//printf("%d: %d -> ", i, arr_seq[i]);
-				arr_programs[next_available][i] = arr_seq[i];
-				//printf("%d\n", arr_programs[next_available][i]);
-			}
-			//printf("Starting a new thread\n");
-			pthread_create(&threads[next_available], NULL, machine_thread, &threads_data[next_available]);
-			//printf("Started\n");
+
+
 			
 
 
