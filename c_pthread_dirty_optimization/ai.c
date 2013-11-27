@@ -41,8 +41,8 @@ struct ThreadMachineData
 const char SYMBOLS[] = "[].+-<>";
 const int MAXVAL = 6;
 const int MAXITERS = 10000;
-const int NBGTHREADS = 8;
-const int MAXPROGRAMSIZE = 50;
+const int NBGTHREADS = 4;
+const int MAXPROGRAMSIZE = 8;
 const int TAPELEN = 20020; //just in case
 
 int next_arr_seq(int *arr, int len, int maxval);
@@ -66,8 +66,9 @@ int main()
 	int *arr_seq, tape_len, *desired_output, *arr_programs[NBGTHREADS];
 	int i, seq_len, desired_out_len, n_thread, tmp, next_available, semval;
 	//int desired_output_st[] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34};
-	int desired_output_st[] = {3, 6, 9, 12, 15};
+	//int desired_output_st[] = {0, 4, 8, 12, 16};
 	//int desired_output_st[] = {3};
+	int desired_output_st[] = {0, 2, 4, 8, 16, 32};
 	char winner_program[MAXPROGRAMSIZE+1];
 
 	struct MutexedFlag is_running[NBGTHREADS], success[NBGTHREADS], global_exit_flag;
