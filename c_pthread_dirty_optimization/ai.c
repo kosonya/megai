@@ -41,7 +41,7 @@ struct ThreadMachineData
 const char SYMBOLS[] = "[].+-<>";
 const int MAXVAL = 6;
 const int MAXITERS = 10000;
-const int NBGTHREADS = 1;
+const int NBGTHREADS = 10;
 const int MAXPROGRAMSIZE = 10;
 const int TAPELEN = 20020; //just in case
 
@@ -235,6 +235,7 @@ int main()
 					printf("Waiting for thread %d's semaphore\n", n_thread);
 				#endif
 				sem_wait(&finished_task_semaphore[n_thread]);
+				sem_post(&finished_task_semaphore[n_thread]);
 				#ifdef DEBUG_ON
 					printf("Thread %d's semaphore aquired\n", n_thread);
 				#endif
