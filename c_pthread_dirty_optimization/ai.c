@@ -23,7 +23,7 @@
 #include <semaphore.h>
 #include <string.h>
 
-#define DEBUG_ON 1
+//#define DEBUG_ON 1
 
 struct MutexedFlag
 {
@@ -41,8 +41,8 @@ struct ThreadMachineData
 const char SYMBOLS[] = "[].+-<>";
 const int MAXVAL = 6;
 const int MAXITERS = 10000;
-const int NBGTHREADS = 10;
-const int MAXPROGRAMSIZE = 10;
+const int NBGTHREADS = 8;
+const int MAXPROGRAMSIZE = 50;
 const int TAPELEN = 20020; //just in case
 
 int next_arr_seq(int *arr, int len, int maxval);
@@ -66,8 +66,8 @@ int main()
 	int *arr_seq, tape_len, *desired_output, *arr_programs[NBGTHREADS];
 	int i, seq_len, desired_out_len, n_thread, tmp, next_available, semval;
 	//int desired_output_st[] = {0, 1, 1, 2, 3, 5, 8, 13, 21, 34};
-	//int desired_output_st[] = {3, 6, 9, 12, 15};
-	int desired_output_st[] = {1};
+	int desired_output_st[] = {3, 6, 9, 12, 15};
+	//int desired_output_st[] = {3};
 	char winner_program[MAXPROGRAMSIZE+1];
 
 	struct MutexedFlag is_running[NBGTHREADS], success[NBGTHREADS], global_exit_flag;
@@ -292,7 +292,7 @@ void arr_seq_to_program(int *src, char *dst, int len)
 
 int validate_and_optimize(char *program, int len)
 {
-	int i, has_io = 0, nesting_level = 0, has_cycles = 1; // FIXME
+	int i, has_io = 0, nesting_level = 0, has_cycles = 0; 
 	for(i = 0; i < len; i++)
 	{
 		if (program[i] == '[')
