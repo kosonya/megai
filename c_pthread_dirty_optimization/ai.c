@@ -145,6 +145,7 @@ int main()
 
 				if(get_mutexed_flag(&success[n_thread]))
 				{
+					sem_wait(&finished_task_semaphore[n_thread]);
 					set_mutexed_flag(&global_exit_flag, 1);
 					printf("Success!\n");
 					printf("Desired output: ");
@@ -162,31 +163,26 @@ int main()
 				next_available = n_thread;
 			}
 
+			sem_wait(&finished_task_semaphore[n_thread]);
+			sem_post(&finished_task_semaphore[n_thread]);
 			memcpy(arr_programs[next_available], arr_seq, sizeof(int)*seq_len);
+			set_mutexed_flag(&is_running[n_thread], 1);
+			sem_post(&has_new_task_semaphore[n_thread]);
 
 
 			
 
 
 		} while(next_arr_seq(arr_seq, seq_len, MAXVAL));
-		//printf("Ran out of programs of length %d\n", seq_len);
 
-		//printf("Waiting for the semaphore\n");
 		sem_wait(&worker_semaphore);
-		//printf("Aquired\n");			
+		
 		for(n_thread = 0; n_thread < NBGTHREADS; n_thread++)
 		{
-			pthread_mutex_lock( threads_data[n_thread].is_available_mutex );
-			tmp = is_available[n_thread];
-			pthread_mutex_unlock( threads_data[n_thread].is_available_mutex );
-			if(!tmp)
+			sem_wait(&finished_task_semaphore[n_thread]);
+			if(get_mutexed_flag(&success[n_thread]))
 			{
-				//printf("Thread %d is bussy\n", n_thread);
-				//printf("Joining thread %d\n", n_thread);
-				pthread_join(threads[n_thread], NULL);
-			}
-			if(success[n_thread])
-			{
+				set_mutexed_flag(&global_exit_flag, 1);
 				printf("Success!\n");
 				printf("Desired output: ");
 				for(i = 0; i < desired_out_len; i++)
@@ -194,29 +190,18 @@ int main()
 					printf("%d ", desired_output[i]);
 				}
 				printf("\n");
-				printf("Machine: %s\n", programs[n_thread]);
+				arr_seq_to_program(arr_programs[n_thread], winner_program, seq_len);
+				winner_program[seq_len] = '\0';
+				printf("Machine: %s\n", winner_program);
 				return 0;
 			}
 
 		}
 
-		/*for(n_thread = 0; n_thread < NBGTHREADS; n_thread++)
-		{
-
-			printf("Freeing arr_programs[%d]\n", n_thread);
-			free(arr_programs[n_thread]);
-			printf("Freeing stacks[%d]\n", n_thread);
-			free(stacks[n_thread]);
-			printf("Freeing match_arrs[%d]\n", n_thread);
-			free(match_arrs[n_thread]);
-			printf("Freeing programs[%d]\n", n_thread);
-			free(programs[n_thread]);
-		}
-		printf("Freeing arr_seq\n");
-		free(arr_seq);*/
+		free(arr_seq);
 	}
 
-	//free(desired_output);
+
 	
 	return 0;
 }
@@ -406,122 +391,73 @@ void *machine_thread(void *param)
 {
 	int iters, machine_output, i, j, cmd_pointer, tape_pointer;
 	int tape[TAPELEN], int stack[MAXPROGRAMSIZE], int mach_arr[MAXPROGRAMSIZE];
+	char *program[MAXPROGRAMSIZE+1];
 	struct ThreadMachineData *data = (struct ThreadMachineData*)param;
 
 	
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	pthread_mutex_lock( data -> is_available_mutex );
-	*(data -> is_available) = 0;
-	pthread_mutex_unlock( data -> is_available_mutex);
-
-	//printf("Thread has started\n");
-	//printf("Tape len from inside thread: %d\n", data -> tape_len);
-
-	//printf("Program len: %d\nRaw: ", data -> program_len);
-	//for(i = 0; i < data -> program_len; i++)
-	//	printf("%d ", (data -> arr_program)[i]);
-	//printf("\nTranslating to string\n");
-
-	arr_seq_to_program(data -> arr_program, data -> program, data -> program_len);
-	(data -> program)[data -> program_len] = '\0';
-
-	//printf("Processing program: %s\n", data -> program);
-
-	if (! validate_and_optimize(data -> program, data -> program_len) )
+	while(!get_mutexed_flag(data -> global_exit_flag))
 	{
-		//printf("This program is bad, exiting\n");
-		*(data -> success) = 0;
-		sem_post(data -> worker_semaphore);
-		pthread_mutex_lock( data -> is_available_mutex );
-		*(data -> is_available) = 1;
-		pthread_mutex_unlock( data -> is_available_mutex);
-		//printf("Exited\n");
-		//pthread_exit(NULL);
-		return NULL;
-	}
-	else
-	{
-		//printf("This program is good, processing\nCleaning the tape\n");
-		for(j = 0; j < (data -> tape_len); j++)
+
+		sem_wait(data -> has_new_task_semaphore);
+
+		arr_seq_to_program(data -> arr_program, program, data -> program_len);
+		program[data -> program_len] = '\0';
+
+
+
+		if (! validate_and_optimize(program, data -> program_len) )
 		{
-		//	printf("AAA! %d ", j);
-			(data -> tape)[j] = 0;
+			set_mutexed_flag(data -> success, 0);
 		}
-		//printf("Tape cleaned\n");
-		match_brackets(data -> program, data -> match_arr, data -> stack, data -> program_len);
-
-		tape_pointer = (data -> tape_len)/2;
-		cmd_pointer = 0;
-		j = 0;
-		for(iters = 0; iters <= MAXITERS; iters++)
+		else
 		{
-			switch (machine_next_step(data -> program, data -> tape, data -> match_arr, &cmd_pointer, &tape_pointer, &machine_output, data -> program_len))
+			//printf("This program is good, processing\nCleaning the tape\n");
+			for(j = 0; j < (data -> tape_len); j++)
 			{
-				case 0:
-					*(data -> success) = 0;
-					sem_post(data -> worker_semaphore);
-					pthread_mutex_lock( data -> is_available_mutex );
-					*(data -> is_available) = 1;
-					pthread_mutex_unlock( data -> is_available_mutex);
-
-					//pthread_exit(NULL);
-					return NULL;
-				case 1:
-					if (machine_output != (data -> desired_out)[j])
-					{
-						*(data -> success) = 0;
-						sem_post(data -> worker_semaphore);
-						pthread_mutex_lock( data -> is_available_mutex );
-						*(data -> is_available) = 1;
-						pthread_mutex_unlock( data -> is_available_mutex);
-
-						//pthread_exit(NULL);
-						return NULL;
-					}
-					j++;
-					if (j >= data -> desired_out_len)
-					{
-						*(data -> success) = 1;
-						sem_post(data -> worker_semaphore);
-						pthread_mutex_lock( data -> is_available_mutex );
-						*(data -> is_available) = 1;
-						pthread_mutex_unlock( data -> is_available_mutex);
-
-						//pthread_exit(NULL);
-						return NULL;
-					}
-							
-				default:
-						;
+			//	printf("AAA! %d ", j);
+				tape[j] = 0;
 			}
+			//printf("Tape cleaned\n");
+			match_brackets(program, match_arr, stack, data -> program_len);
 
-		}
+			tape_pointer = TAPELEN/2;
+			cmd_pointer = 0;
+			j = 0;
+			for(iters = 0; iters <= MAXITERS; iters++)
+			{
+				switch (machine_next_step(program, tape, match_arr, &cmd_pointer, &tape_pointer, &machine_output, data -> program_len))
+				{
+					case 0:
+						set_mutexed_flag(data -> success, 0);
+						goto machine_cycle_exit;
+					case 1:
+						if (machine_output != (data -> desired_out)[j])
+						{
+							set_mutexed_flag(data -> success, 0);
+							goto machine_cycle_exit;
+						}
+						j++;
+						if (j >= data -> desired_out_len)
+						{
+							set_mutexed_flag(data -> success, 1);
+							set_mutexed_flag(data -> global_exit_flag, 1);
+							goto machine_cycle_exit;
+						}
+							
+					default:
+							;
+				}
+
+			}
+			machine_cycle_exit:
+			set_mutexed_flag(data -> is_available, 1);
+			sem_post(data -> finished_task_semaphore);
 
 				
+		}
 	}
 
-	//pthread_exit(NULL);
+
 	return NULL;
 }
 
